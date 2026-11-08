@@ -1,0 +1,8 @@
+{
+  "appId": "ir.attendance.inservice",
+  "appName": "حضور و غیاب ضمن خدمت",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": false
+  }
+}

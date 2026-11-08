@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f766e" />
+      <stop offset="100%" stop-color="#042f2e" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#14b8a6" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="512" height="512" rx="128" fill="url(#grad)" />
+  <!-- Card outline -->
+  <rect x="80" y="80" width="352" height="352" rx="48" fill="#134e4a" opacity="0.6" stroke="url(#accent)" stroke-width="8" />
+  <!-- ID Badge Header -->
+  <rect x="196" y="56" width="120" height="36" rx="12" fill="#0d9488" />
+  <!-- Avatar / User Icon -->
+  <circle cx="256" cy="190" r="50" fill="#ccfbf1" />
+  <path d="M176 310 C176 250, 336 250, 336 310" stroke="#ccfbf1" stroke-width="24" stroke-linecap="round" fill="none" />
+  <!-- Checkmark Badge -->
+  <circle cx="340" cy="330" r="44" fill="#10b981" stroke="#042f2e" stroke-width="6" />
+  <path d="M322 330 L334 342 L360 316" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+</svg>
