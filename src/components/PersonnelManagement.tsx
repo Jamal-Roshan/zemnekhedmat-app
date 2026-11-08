@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo, useDeferredValue, useEffect } from 'react';
 import { 
   Users, 
   Upload, 
@@ -92,7 +92,11 @@ export const PersonnelManagement: React.FC<Props> = ({
   });
 
   // Distinct work locations for filter
-  const uniqueLocations = Array.from(new Set(personnel.map(p => p.workLocation).filter(Boolean)));
+  const uniqueLocations = useMemo(
+    () => Array.from(new Set(personnel.map(p => p.workLocation).filter(Boolean))),
+    [personnel]
+  );
+  const guestCount = useMemo(() => personnel.filter(p => p.isGuest).length, [personnel]);
 
   const handleOpenAdd = () => {
     setEditingPerson(null);
@@ -218,21 +222,45 @@ export const PersonnelManagement: React.FC<Props> = ({
     if (file) processPersonnelExcelFile(file);
   };
 
-  // Filtered personnel
-  const filtered = personnel.filter(p => {
-    const q = toEnglishDigits(search).toLowerCase();
-    const matchesSearch = 
-      toEnglishDigits(p.personnelCode).toLowerCase().includes(q) ||
-      toEnglishDigits(p.nationalId).toLowerCase().includes(q) ||
-      `${p.firstName} ${p.lastName}`.toLowerCase().includes(q) ||
-      p.workLocation.toLowerCase().includes(q);
+  // ایندکس جستجو (فقط وقتی لیست پرسنل عوض شود ساخته می‌شود)
+  const searchIndex = useMemo(
+    () =>
+      personnel.map(p =>
+        `${toEnglishDigits(p.personnelCode)}|${toEnglishDigits(p.nationalId)}|${p.firstName} ${p.lastName}|${p.workLocation}`.toLowerCase()
+      ),
+    [personnel]
+  );
 
-    const matchesGender = genderFilter === 'all' || p.gender === genderFilter;
-    const matchesType = typeFilter === 'all' || (typeFilter === 'guest' ? p.isGuest : !p.isGuest);
-    const matchesLoc = locationFilter === 'all' || p.workLocation === locationFilter;
+  // جستجو بدون قفل شدن تایپ (مقدار با تأخیر)
+  const deferredSearch = useDeferredValue(search);
 
-    return matchesSearch && matchesGender && matchesType && matchesLoc;
-  });
+  const filtered = useMemo(() => {
+    const q = toEnglishDigits(deferredSearch).trim().toLowerCase();
+    const result: Personnel[] = [];
+    for (let i = 0; i < personnel.length; i++) {
+      const p = personnel[i];
+      if (q && !searchIndex[i].includes(q)) continue;
+      if (genderFilter !== 'all' && p.gender !== genderFilter) continue;
+      if (typeFilter !== 'all' && (typeFilter === 'guest' ? !p.isGuest : !!p.isGuest)) continue;
+      if (locationFilter !== 'all' && p.workLocation !== locationFilter) continue;
+      result.push(p);
+    }
+    return result;
+  }, [personnel, searchIndex, deferredSearch, genderFilter, typeFilter, locationFilter]);
+
+  // صفحه‌بندی: فقط ردیف‌های همین صفحه رندر می‌شوند
+  const [pageSize, setPageSize] = useState(50);
+  const [page, setPage] = useState(0);
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, pageCount - 1);
+  const pageStart = currentPage * pageSize;
+  const pageItems = useMemo(
+    () => filtered.slice(pageStart, pageStart + pageSize),
+    [filtered, pageStart, pageSize]
+  );
+  useEffect(() => {
+    setPage(0);
+  }, [deferredSearch, genderFilter, typeFilter, locationFilter, pageSize]);
 
   return (
     <div className="space-y-6">
@@ -526,8 +554,8 @@ export const PersonnelManagement: React.FC<Props> = ({
           نمایش <strong className="text-slate-700 dark:text-slate-200">{toPersianDigits(filtered.length)}</strong> از مجموع <strong className="text-slate-700 dark:text-slate-200">{toPersianDigits(personnel.length)}</strong> پرسنل
         </span>
         <div className="flex items-center gap-3">
-          <span>پرسنل رسمی: <strong>{toPersianDigits(personnel.filter(p => !p.isGuest).length)}</strong></span>
-          <span>پرسنل مهمان: <strong>{toPersianDigits(personnel.filter(p => p.isGuest).length)}</strong></span>
+          <span>پرسنل رسمی: <strong>{toPersianDigits(personnel.length - guestCount)}</strong></span>
+          <span>پرسنل مهمان: <strong>{toPersianDigits(guestCount)}</strong></span>
         </div>
       </div>
 
@@ -549,7 +577,9 @@ export const PersonnelManagement: React.FC<Props> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-              {filtered.map((person, idx) => (
+              {pageItems.map((person, i) => {
+                const idx = pageStart + i;
+                return (
                 <tr key={person.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
                   <td className="py-3 px-4 font-mono text-slate-400">{toPersianDigits(idx + 1)}</td>
                   <td className={`py-3 px-4 font-mono font-bold ${themeObj.textPrimary}`}>
@@ -606,10 +636,50 @@ export const PersonnelManagement: React.FC<Props> = ({
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
+
+
+        {filtered.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300">
+            <div className="flex items-center gap-2">
+              <span>تعداد در هر صفحه:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                className="px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+              >
+                {[25, 50, 100, 200].map(n => (
+                  <option key={n} value={n}>{toPersianDigits(n)}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={currentPage === 0}
+                onClick={() => setPage(currentPage - 1)}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-semibold disabled:opacity-40"
+              >
+                قبلی
+              </button>
+              <span>
+                صفحه <strong>{toPersianDigits(currentPage + 1)}</strong> از <strong>{toPersianDigits(pageCount)}</strong>
+              </span>
+              <button
+                type="button"
+                disabled={currentPage >= pageCount - 1}
+                onClick={() => setPage(currentPage + 1)}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-semibold disabled:opacity-40"
+              >
+                بعدی
+              </button>
+            </div>
+          </div>
+        )}
 
         {filtered.length === 0 && (
           <div className="py-12 text-center">
