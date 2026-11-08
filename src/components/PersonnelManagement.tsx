@@ -69,7 +69,6 @@ export const PersonnelManagement: React.FC<Props> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [isDropActive, setIsDropActive] = useState(false);
   const [isUploadCardExpanded, setIsUploadCardExpanded] = useState(true);
   const inlineFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -219,24 +218,6 @@ export const PersonnelManagement: React.FC<Props> = ({
     if (file) processPersonnelExcelFile(file);
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDropActive(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDropActive(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDropActive(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      processPersonnelExcelFile(file);
-    }
-  };
-
   // Filtered personnel
   const filtered = personnel.filter(p => {
     const q = toEnglishDigits(search).toLowerCase();
@@ -331,7 +312,7 @@ export const PersonnelManagement: React.FC<Props> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                ورود همزمان صدها پرسنل از طریق فایل‌های اکسل (.xlsx, .xls, .csv) به صورت کشیدن و رها کردن یا انتخاب مستقیم
+                ورود همزمان صدها پرسنل از طریق فایل‌های اکسل (.xlsx, .xls, .csv) با انتخاب فایل
               </p>
             </div>
           </div>
@@ -348,16 +329,11 @@ export const PersonnelManagement: React.FC<Props> = ({
 
         {isUploadCardExpanded && (
           <div className="p-5 sm:p-6 space-y-4">
-            {/* Drag & Drop Upload Zone */}
+            {/* Excel file picker */}
             <div
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
               onClick={() => inlineFileInputRef.current?.click()}
               className={`border-2 border-dashed rounded-3xl p-6 sm:p-8 text-center transition-all cursor-pointer ${
-                isDropActive
-                  ? 'border-emerald-500 bg-emerald-100/60 dark:bg-emerald-950/60 scale-[1.01]'
-                  : 'border-emerald-300 dark:border-emerald-800/80 bg-emerald-50/30 dark:bg-emerald-950/20 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/40'
+                'border-emerald-300 dark:border-emerald-800/80 bg-emerald-50/30 dark:bg-emerald-950/20 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/40'
               }`}
             >
               <input
@@ -371,7 +347,7 @@ export const PersonnelManagement: React.FC<Props> = ({
                 <Upload className="w-7 h-7 animate-bounce" />
               </div>
               <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
-                فایل اکسل پرسنل را اینجا بکشید و رها کنید یا برای انتخاب کلیک نمایید
+                برای انتخاب فایل اکسل پرسنل اینجا را لمس کنید
               </h4>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 max-w-xl mx-auto">
                 ستون‌های فایل اکسل می‌تواند شامل: <strong>کد پرسنلی</strong>، <strong>کد ملی</strong>، <strong>نام</strong>، <strong>نام خانوادگی</strong>، <strong>جنسیت</strong> و <strong>محل خدمت</strong> باشد.
@@ -701,7 +677,7 @@ export const PersonnelManagement: React.FC<Props> = ({
                   />
                   <Upload className="w-12 h-12 text-teal-600 mx-auto mb-3 animate-bounce" />
                   <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                    برای انتخاب فایل اکسل اینجا کلیک کنید یا فایل را بکشید و رها کنید
+                    برای انتخاب فایل اکسل اینجا را لمس کنید
                   </p>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                     شامل ستون‌های: کد پرسنلی، کد ملی، نام، نام خانوادگی، جنسیت، محل خدمت
