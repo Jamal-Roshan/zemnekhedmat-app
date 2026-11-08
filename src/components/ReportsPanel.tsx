@@ -222,25 +222,12 @@ export const ReportsPanel: React.FC<Props> = ({
                 <button
                   onClick={() => {
                     exportCourseAttendanceExcel(selectedCourse, selectedCourse.sessions, attendance, personnel, false);
-                    showToast(`فایل اکسل ماتریس حاضرین دوره «${selectedCourse.name}» دانلود شد.`, 'success');
                   }}
                   className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
                   title="دانلود ماتریس اکسل فقط برای حاضرین و ثبت‌نام‌شدگان این دوره"
                 >
                   <FileSpreadsheet className="w-4 h-4" />
-                  دانلود اکسل ماتریس حاضرین دوره
-                </button>
-
-                <button
-                  onClick={() => {
-                    exportCourseAttendanceExcel(selectedCourse, selectedCourse.sessions, attendance, personnel, true);
-                    showToast(`فایل اکسل ماتریس کلیه پرسنل در دوره «${selectedCourse.name}» دانلود شد.`, 'success');
-                  }}
-                  className="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-semibold transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
-                  title="دانلود ماتریس کامل کلیه پرسنل سازمان در جلسات این دوره"
-                >
-                  <Download className="w-4 h-4" />
-                  اکسل ماتریس کلیه پرسنل
+                  دانلود اکسل گزارش حضور و غیاب دوره
                 </button>
               </div>
             )}

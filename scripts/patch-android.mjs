@@ -8,7 +8,7 @@ if (!fs.existsSync('android')) {
   process.exit(1);
 }
 fs.mkdirSync(dest, { recursive: true });
-for (const f of ['NativePrintPlugin.java', 'MainActivity.java']) {
+for (const f of fs.readdirSync('native-android').filter((n) => n.endsWith('.java'))) {
   fs.copyFileSync(path.join('native-android', f), path.join(dest, f));
   console.log('copied', f);
 }

@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import { AttendanceRecord, Course, CourseSession, Gender, Personnel } from '../types';
-import { getTodayJalali, toEnglishDigits, toPersianDigits } from './jalali';
+import { getTodayJalali, getCurrentTime, toEnglishDigits, toPersianDigits } from './jalali';
 import { saveWorkbook } from './nativeFile';
 import { isValidIranianNationalId, normalizeNationalId, formatNationalIdForExport, getNationalIdConfig } from './nationalId';
 import { normalizePersian } from './persianText';
@@ -410,6 +410,8 @@ export function exportCourseAttendanceExcel(
   // Build matrix rows
   const rows: Record<string, unknown>[] = [];
   let rowIdx = 1;
+  let percentSum = 0;
+  let guestCount = 0;
 
   // If attendeeMap is empty (no one checked in and includeAll is false), fallback to personnelList
   if (attendeeMap.size === 0) {
@@ -427,7 +429,8 @@ export function exportCourseAttendanceExcel(
       'ردیف': rowIdx++,
       'کد پرسنلی': personnel.personnelCode,
       'کد ملی': formatNationalIdForExport(personnel.nationalId) || '-',
-      'نام و نام خانوادگی': `${personnel.firstName} ${personnel.lastName}`.trim(),
+      'نام': personnel.firstName,
+      'نام خانوادگی': personnel.lastName,
       'جنسیت': personnel.gender === 'female' ? 'زن' : 'مرد',
       'محل خدمت': personnel.workLocation || '-',
       'نوع پرسنل': personnel.isGuest ? 'مهمان' : 'رسمی',
@@ -455,6 +458,8 @@ export function exportCourseAttendanceExcel(
     });
 
     const percent = Math.min(100, Math.round((presentCount / totalSessionsCount) * 100));
+    percentSum += percent;
+    if (personnel.isGuest) guestCount++;
     rowObj['تعداد جلسات حاضر'] = Math.round(presentCount);
     rowObj['درصد حضور'] = `${percent}%`;
     rowObj['نتیجه نهایی'] = percent >= 75 ? 'قبول' : percent >= 50 ? 'مشروط' : 'مردود';
@@ -462,17 +467,41 @@ export function exportCourseAttendanceExcel(
     rows.push(rowObj);
   });
 
-  const worksheet = XLSX.utils.json_to_sheet(rows);
+  // ---------- شناسنامه دوره (بالای فایل) ----------
+  const statusLabel: Record<string, string> = {
+    active: 'در حال برگزاری',
+    completed: 'پایان‌یافته',
+    upcoming: 'برگزار نشده',
+  };
+  const participantsCount = rows.length;
+  const overallPercent = participantsCount > 0 ? Math.round(percentSum / participantsCount) : 0;
 
-  // Set RTL view for Persian Microsoft Excel
-  worksheet['!views'] = [{ RTL: true }];
+  const infoRows: (string | number)[][] = [
+    ['گزارش حضور و غیاب دوره'],
+    ['نام دوره', course.name, 'کد دوره', course.code],
+    ['مدرس', course.instructor || '-', 'محل برگزاری', course.location || '-'],
+    ['تاریخ شروع', course.startDate || '-', 'تاریخ پایان', course.endDate || '-'],
+    ['مدت دوره (ساعت)', course.hours ?? '-', 'وضعیت دوره', statusLabel[course.status] || '-'],
+    ['تعداد جلسات', sessions.length, 'تعداد شرکت‌کنندگان', participantsCount],
+    ['درصد حضور کل دوره', `${overallPercent}%`, 'تعداد پرسنل مهمان', guestCount],
+    ['تاریخ و ساعت تهیه گزارش', `${getTodayJalali()} - ${getCurrentTime()}`],
+    [],
+  ];
+
+  const worksheet = XLSX.utils.aoa_to_sheet(infoRows);
+  XLSX.utils.sheet_add_json(worksheet, rows, { origin: { r: infoRows.length, c: 0 } });
+
+  // ادغام سلول عنوان
+  const totalCols = 7 + 2 + sessions.length + 3; // ستون‌های ثابت + نام/نام خانوادگی + جلسات + خلاصه
+  worksheet['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: Math.max(3, Math.min(totalCols - 1, 9)) } }];
 
   // Column widths
   const cols = [
-    { wch: 8 },  // ردیف
-    { wch: 15 }, // کد پرسنلی
-    { wch: 15 }, // کد ملی
-    { wch: 24 }, // نام و نام خانوادگی
+    { wch: 22 }, // ردیف / برچسب‌های شناسنامه
+    { wch: 24 }, // کد پرسنلی / مقدار
+    { wch: 18 }, // کد ملی / برچسب
+    { wch: 24 }, // نام / مقدار
+    { wch: 18 }, // نام خانوادگی
     { wch: 10 }, // جنسیت
     { wch: 24 }, // محل خدمت
     { wch: 12 }, // نوع
@@ -484,10 +513,15 @@ export function exportCourseAttendanceExcel(
   worksheet['!cols'] = cols;
 
   const workbook = XLSX.utils.book_new();
-  const safeTitle = course.name.replace(/[/\\?%*:|"<>]/g, '_').substring(0, 28) || 'ماتریس_حضور_غیاب';
+  const safeTitle = course.name.replace(/[/\\?%*:|"<>\[\]]/g, '_').substring(0, 28) || 'حضور_غیاب';
   XLSX.utils.book_append_sheet(workbook, worksheet, safeTitle);
   applyRTLToWorkbook(workbook, [safeTitle]);
-  void saveWorkbook(workbook, `ماتریس_حضور_غیاب_${course.code || 'دوره'}_${getTodayJalali().replace(/\//g, '-')}.xlsx`);
+
+  // نام فایل: گزارش حضور و غیاب دوره-کد دوره-تاریخ-ساعت (شمسی، با ثانیه)
+  const datePart = toEnglishDigits(getTodayJalali()).replace(/\//g, '-');
+  const timePart = toEnglishDigits(getCurrentTime()).replace(/:/g, '-');
+  const codePart = (course.code || 'بدون-کد').replace(/[\\/:*?"<>|\s]+/g, '-');
+  void saveWorkbook(workbook, `گزارش حضور و غیاب دوره-${codePart}-${datePart}-${timePart}.xlsx`);
 }
 
 /**

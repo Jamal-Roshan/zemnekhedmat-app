@@ -79,7 +79,6 @@ export const SettingsAndBackup: React.FC<Props> = ({
   // Download complete JSON backup file to device
   const handleDownloadFullBackup = () => {
     StorageAPI.exportBackupFile(personnel, courses, attendance);
-    showToast('فایل پشتیبان کامل JSON دانلود شد.', 'success');
   };
 
   // Confirm restore from snapshot
