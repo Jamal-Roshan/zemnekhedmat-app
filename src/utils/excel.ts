@@ -35,10 +35,20 @@ export function applyRTLToWorkbook(workbook: XLSX.WorkBook, sheetNames?: string[
 /**
  * Clean and normalize cell text, stripping BOM and invisible RTL/LTR markers
  */
+/** یکسان‌سازی سرستون‌ها: ي/ك عربی، نیم‌فاصله، فاصله‌های اضافه و حروف بزرگ/کوچک */
+function normHeader(s: string): string {
+  return normalizePersian(String(s))
+    .replace(/[\u200B-\u200F\uFEFF]/g, ' ')
+    .replace(/[_\s]+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
 function cleanText(val: unknown): string {
   if (val === undefined || val === null) return '';
   return normalizePersian(String(val))
     .replace(/[\u200B-\u200D\uFEFF\u200E\u200F]/g, '')
+    .replace(/\s+/g, ' ')
     .trim();
 }
 
@@ -97,7 +107,7 @@ export async function parsePersonnelExcel(
     const keys = Object.keys(row);
     const findVal = (...patterns: string[]) => {
       for (const pattern of patterns) {
-        const foundKey = keys.find(k => k.trim().toLowerCase().includes(pattern.toLowerCase()));
+        const foundKey = keys.find(k => normHeader(k).includes(normHeader(pattern)));
         if (foundKey && row[foundKey] !== undefined) {
           return cleanText(row[foundKey]);
         }
@@ -111,7 +121,7 @@ export async function parsePersonnelExcel(
     let firstName = findVal('نام کوچک', 'نام', 'اسم', 'firstname', 'first_name');
     let lastName = findVal('نام خانوادگی', 'فامیلی', 'نام_خانوادگی', 'شهرت', 'lastname', 'last_name', 'family');
     const genderRaw = findVal('جنسیت', 'جنس', 'gender', 'sex');
-    const workLocation = findVal('محل خدمت', 'محل کار', 'واحد سازمانی', 'واحد', 'اداره', 'بخش', 'سازمان', 'worklocation', 'department', 'location') || 'ستاد مرکزی';
+    const workLocation = findVal('محل خدمت', 'محل کار', 'واحد سازمانی', 'واحد', 'اداره', 'بخش', 'سازمان', 'worklocation', 'department', 'location');
 
     // Handle combined full name if separate columns are not provided
     if (fullNameRaw && (!firstName || !lastName)) {
@@ -190,7 +200,7 @@ export async function parsePersonnelExcel(
         firstName: firstName || 'نامشخص',
         lastName: lastName || '',
         gender,
-        workLocation,
+        workLocation: workLocation || 'نامشخص',
         isGuest: false,
         createdAt: nowJalali,
         updatedAt: nowJalali,

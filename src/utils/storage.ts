@@ -254,6 +254,16 @@ function safeParse<T>(key: string, fallback: T): T {
   }
 }
 
+// فقط در اولین اجرای برنامه (کلید وجود ندارد) داده نمونه ساخته می‌شود؛
+// اگر کاربر همه‌ی داده را حذف کند، دیگر نمونه برنمی‌گردد.
+function isUnset(key: string): boolean {
+  try {
+    return localStorage.getItem(key) === null;
+  } catch {
+    return false;
+  }
+}
+
 function safeSet<T>(key: string, value: T): void {
   try {
     localStorage.setItem(key, JSON.stringify(value));
@@ -268,7 +278,7 @@ function safeSet<T>(key: string, value: T): void {
 export const StorageAPI = {
   getPersonnel(): Personnel[] {
     const stored = safeParse<Personnel[]>(STORAGE_KEYS.PERSONNEL, []);
-    if (stored.length === 0) {
+    if (isUnset(STORAGE_KEYS.PERSONNEL)) {
       safeSet(STORAGE_KEYS.PERSONNEL, SEED_PERSONNEL);
       return SEED_PERSONNEL;
     }
@@ -281,7 +291,7 @@ export const StorageAPI = {
 
   getCourses(): Course[] {
     const stored = safeParse<Course[]>(STORAGE_KEYS.COURSES, []);
-    if (stored.length === 0) {
+    if (isUnset(STORAGE_KEYS.COURSES)) {
       safeSet(STORAGE_KEYS.COURSES, SEED_COURSES);
       return SEED_COURSES;
     }
@@ -294,7 +304,7 @@ export const StorageAPI = {
 
   getAttendance(): AttendanceRecord[] {
     const stored = safeParse<AttendanceRecord[]>(STORAGE_KEYS.ATTENDANCE, []);
-    if (stored.length === 0) {
+    if (isUnset(STORAGE_KEYS.ATTENDANCE)) {
       safeSet(STORAGE_KEYS.ATTENDANCE, SEED_ATTENDANCE);
       return SEED_ATTENDANCE;
     }
