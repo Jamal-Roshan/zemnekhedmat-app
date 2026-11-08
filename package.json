@@ -11,7 +11,7 @@
     "lint": "tsc --noEmit",
     "build:android": "cross-env BUILD_TARGET=android vite build",
     "android:add": "cap add android",
-    "android:sync": "npm run build:android && cap sync android",
+    "android:sync": "npm run build:android && cap sync android && node scripts/patch-android.mjs",
     "android:open": "cap open android"
   },
   "dependencies": {

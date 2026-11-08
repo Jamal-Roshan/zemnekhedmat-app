@@ -36,3 +36,7 @@ npm run android:open       # باز شدن در Android Studio
 - محلی: `npm install` و سپس `npm run dev` و باز کردن `http://localhost:3000`.
 - آنلاین: در GitHub بخش Settings ▸ Pages گزینه Source را روی **GitHub Actions** بگذارید؛
   workflow با نام Deploy Web Test Version آدرس سایت را می‌دهد.
+
+## چاپ پرونده آموزشی در اندروید
+دکمه چاپ از سرویس چاپ خود اندروید استفاده می‌کند (برای ذخیره PDF گزینه Save as PDF را انتخاب کنید).
+افزونه‌ی آن در پوشه `native-android` است و اسکریپت `android:sync` آن را خودکار داخل پروژه اندروید کپی می‌کند.

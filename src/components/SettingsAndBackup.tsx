@@ -319,6 +319,71 @@ export const SettingsAndBackup: React.FC<Props> = ({
           </div>
         </div>
 
+        {/* SECTION: NATIONAL ID LEADING ZEROS */}
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-5">
+          <div>
+            <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100">تنظیمات صفر ابتدایی کد ملی</h3>
+            <p className="text-[11px] text-slate-400 mt-1 leading-5">
+              کدهای ملی که با یک یا دو صفر شروع می‌شوند (مثل ۰۰۱۲۳۴۵۶۷۸) در اکسل ممکن است بدون صفر ذخیره شوند.
+              صحت‌سنجی کد ملی در همه حالت‌ها هوشمند است و صفرهای حذف‌شده را خودکار تکمیل می‌کند.
+            </p>
+          </div>
+
+          {([
+            {
+              key: 'nidExportZeros' as const,
+              title: 'کد ملی در فایل‌های اکسل خروجی',
+              options: [
+                { id: 'keep', label: 'با صفر اول (ده رقمی)' },
+                { id: 'strip', label: 'بدون صفر اول' },
+              ],
+              def: 'keep',
+            },
+            {
+              key: 'nidImportMode' as const,
+              title: 'کد ملی در فایل اکسل ورودی',
+              options: [
+                { id: 'auto', label: 'تشخیص خودکار' },
+                { id: 'with', label: 'صفر اول دارد' },
+                { id: 'without', label: 'صفر اول ندارد' },
+              ],
+              def: 'auto',
+            },
+            {
+              key: 'nidManualMode' as const,
+              title: 'ثبت یا ویرایش دستی پرسنل (تکی و مهمان)',
+              options: [
+                { id: 'flexible', label: 'با یا بدون صفر اول' },
+                { id: 'full', label: 'فقط ده رقم کامل' },
+              ],
+              def: 'flexible',
+            },
+          ]).map((group) => {
+            const current = (settings[group.key] as string | undefined) ?? group.def;
+            return (
+              <div key={group.key} className="space-y-2">
+                <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">{group.title}</h4>
+                <div className="flex flex-wrap gap-2">
+                  {group.options.map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => onUpdateSettings({ ...settings, [group.key]: opt.id } as AppSettings)}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition ${
+                        current === opt.id
+                          ? 'bg-teal-600 text-white border-teal-600'
+                          : 'bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
         {/* SECTION 2: AUTO-BACKUP & DATABASE SECURITY */}
         <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-5">
           <div className="flex items-center justify-between">

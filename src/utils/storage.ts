@@ -1,6 +1,7 @@
 import { AppSettings, AttendanceRecord, BackupSnapshot, Course, Personnel } from '../types';
 import { getCurrentTime, getTodayJalali } from './jalali';
 import { saveTextFile } from './nativeFile';
+import { deepNormalize } from './persianText';
 
 const STORAGE_KEYS = {
   PERSONNEL: 'shamsi_attendance_personnel',
@@ -236,6 +237,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   soundEnabled: true,
   vibrationEnabled: true,
   lastBackupDate: today,
+  nidExportZeros: 'keep',
+  nidImportMode: 'auto',
+  nidManualMode: 'flexible',
 };
 
 // Safe JSON parser with fallback
@@ -268,11 +272,11 @@ export const StorageAPI = {
       safeSet(STORAGE_KEYS.PERSONNEL, SEED_PERSONNEL);
       return SEED_PERSONNEL;
     }
-    return stored;
+    return deepNormalize(stored);
   },
 
   savePersonnel(list: Personnel[]): void {
-    safeSet(STORAGE_KEYS.PERSONNEL, list);
+    safeSet(STORAGE_KEYS.PERSONNEL, deepNormalize(list));
   },
 
   getCourses(): Course[] {
@@ -281,11 +285,11 @@ export const StorageAPI = {
       safeSet(STORAGE_KEYS.COURSES, SEED_COURSES);
       return SEED_COURSES;
     }
-    return stored;
+    return deepNormalize(stored);
   },
 
   saveCourses(list: Course[]): void {
-    safeSet(STORAGE_KEYS.COURSES, list);
+    safeSet(STORAGE_KEYS.COURSES, deepNormalize(list));
   },
 
   getAttendance(): AttendanceRecord[] {
@@ -294,11 +298,11 @@ export const StorageAPI = {
       safeSet(STORAGE_KEYS.ATTENDANCE, SEED_ATTENDANCE);
       return SEED_ATTENDANCE;
     }
-    return stored;
+    return deepNormalize(stored);
   },
 
   saveAttendance(list: AttendanceRecord[]): void {
-    safeSet(STORAGE_KEYS.ATTENDANCE, list);
+    safeSet(STORAGE_KEYS.ATTENDANCE, deepNormalize(list));
   },
 
   getSettings(): AppSettings {
@@ -371,7 +375,7 @@ export const StorageAPI = {
     courses: Course[],
     attendance: AttendanceRecord[]
   ): void {
-    const data = {
+    const data = deepNormalize({
       appName: 'سامانه حضور و غیاب ضمن خدمت',
       exportDateJalali: getTodayJalali(),
       exportTime: getCurrentTime(),
@@ -387,7 +391,7 @@ export const StorageAPI = {
         courses,
         attendance,
       },
-    };
+    });
 
     void saveTextFile(
       JSON.stringify(data, null, 2),
@@ -404,7 +408,7 @@ export const StorageAPI = {
     attendance: AttendanceRecord[];
   }> {
     const text = await file.text();
-    const parsed = JSON.parse(text);
+    const parsed = deepNormalize(JSON.parse(text));
 
     let personnel: Personnel[] = [];
     let courses: Course[] = [];

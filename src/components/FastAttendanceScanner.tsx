@@ -21,7 +21,7 @@ import {
 import confetti from 'canvas-confetti';
 import { AttendanceRecord, AttendanceStatus, Course, CourseSession, Gender, Personnel, ThemeName } from '../types';
 import { getCurrentTime, getTodayJalali, toEnglishDigits, toPersianDigits } from '../utils/jalali';
-import { isValidIranianNationalId, normalizeNationalId } from '../utils/nationalId';
+import { checkManualNationalId, normalizeNationalId } from '../utils/nationalId';
 import { sounds, triggerHaptic } from '../utils/feedback';
 import { THEMES, getThemeConfig } from '../utils/theme';
 import { ConfirmModal } from './ConfirmModal';
@@ -211,7 +211,7 @@ export const FastAttendanceScanner: React.FC<Props> = ({
     } else if (matchedPersonnel.length > 1) {
       // Exact match check
       const exactMatch = matchedPersonnel.find(
-        p => toEnglishDigits(p.personnelCode) === cleanQuery || toEnglishDigits(p.nationalId) === cleanQuery
+        p => toEnglishDigits(p.personnelCode) === cleanQuery || toEnglishDigits(p.nationalId) === cleanQuery || (/^\d{8,9}$/.test(cleanQuery) && toEnglishDigits(p.nationalId) === normalizeNationalId(cleanQuery))
       );
       if (exactMatch) {
         executeCheckIn(exactMatch);
@@ -247,8 +247,9 @@ export const FastAttendanceScanner: React.FC<Props> = ({
 
     const cleanNId = normalizeNationalId(guestForm.nationalId);
     if (guestForm.nationalId.trim()) {
-      if (!isValidIranianNationalId(cleanNId)) {
-        showToast('کد ملی وارد شده برای پرسنل مهمان نامعتبر است! الگوی ده رقمی و رقم کنترلی ثبت احوال مطابقت ندارد.', 'error');
+      const chk = checkManualNationalId(guestForm.nationalId);
+      if (!chk.ok) {
+        showToast(chk.error || 'کد ملی نامعتبر است.', 'error');
         return;
       }
     }
@@ -829,7 +830,7 @@ export const FastAttendanceScanner: React.FC<Props> = ({
                     onChange={(e) => setGuestForm({ ...guestForm, nationalId: e.target.value })}
                     className={`w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border rounded-xl font-mono focus:outline-hidden ${
                       guestForm.nationalId.trim().length >= 8
-                        ? isValidIranianNationalId(normalizeNationalId(guestForm.nationalId))
+                        ? checkManualNationalId(guestForm.nationalId).ok
                           ? 'border-emerald-500 focus:border-emerald-600 text-emerald-700 dark:text-emerald-300'
                           : 'border-rose-400 focus:border-rose-500 text-rose-600'
                         : 'border-slate-300 dark:border-slate-700 focus:border-amber-500'
@@ -838,7 +839,7 @@ export const FastAttendanceScanner: React.FC<Props> = ({
                   />
                   {guestForm.nationalId.trim() && (
                     <div className="mt-1 text-[11px] font-semibold">
-                      {isValidIranianNationalId(normalizeNationalId(guestForm.nationalId)) ? (
+                      {checkManualNationalId(guestForm.nationalId).ok ? (
                         <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                           <Check className="w-3.5 h-3.5" />
                           کد ملی معتبر است

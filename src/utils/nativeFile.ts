@@ -2,6 +2,8 @@ import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import * as XLSX from 'xlsx';
+import { registerPlugin } from '@capacitor/core';
+import { normalizePersian } from './persianText';
 
 /**
  * ذخیره/اشتراک‌گذاری فایل خروجی.
@@ -43,8 +45,24 @@ async function shareBase64(base64: string, fileName: string): Promise<void> {
   }
 }
 
+/** تبدیل ي/ك عربی به فارسی در همه‌ی سلول‌ها و نام شیت‌ها */
+function normalizeWorkbook(workbook: XLSX.WorkBook): void {
+  for (const name of workbook.SheetNames) {
+    const ws = workbook.Sheets[name];
+    for (const addr of Object.keys(ws)) {
+      if (addr[0] === '!') continue;
+      const cell = ws[addr] as XLSX.CellObject;
+      if (cell && typeof cell.v === 'string') {
+        cell.v = normalizePersian(cell.v);
+        if (typeof cell.w === 'string') cell.w = normalizePersian(cell.w);
+      }
+    }
+  }
+}
+
 /** جایگزین XLSX.writeFile */
 export async function saveWorkbook(workbook: XLSX.WorkBook, fileName: string): Promise<void> {
+  normalizeWorkbook(workbook);
   if (isNative()) {
     try {
       const base64 = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' });
@@ -59,6 +77,7 @@ export async function saveWorkbook(workbook: XLSX.WorkBook, fileName: string): P
 
 /** ذخیره متن (مثلاً پشتیبان JSON) */
 export async function saveTextFile(text: string, fileName: string, mime = 'application/json'): Promise<void> {
+  text = normalizePersian(text);
   if (isNative()) {
     try {
       await shareBase64(utf8ToBase64(text), fileName);
@@ -76,4 +95,22 @@ export async function saveTextFile(text: string, fileName: string, mime = 'appli
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+interface NativePrintPlugin {
+  print(options: { jobName?: string }): Promise<void>;
+}
+const NativePrint = registerPlugin<NativePrintPlugin>('NativePrint');
+
+/** چاپ صفحه (در اندروید از سرویس چاپ سیستم؛ در وب window.print) */
+export async function printPage(jobName = 'پرونده آموزشی'): Promise<void> {
+  if (isNative()) {
+    try {
+      await NativePrint.print({ jobName });
+    } catch (e) {
+      alert('خطا در چاپ: ' + String((e as Error)?.message ?? e));
+    }
+  } else {
+    window.print();
+  }
 }

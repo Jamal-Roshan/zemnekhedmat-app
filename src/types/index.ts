@@ -96,4 +96,7 @@ export interface AppSettings {
   soundEnabled: boolean;
   vibrationEnabled: boolean;
   lastBackupDate?: string;
+  nidExportZeros?: 'keep' | 'strip';          // صفر اول کد ملی در اکسل خروجی
+  nidImportMode?: 'auto' | 'with' | 'without'; // اکسل ورودی صفر اول دارد؟
+  nidManualMode?: 'flexible' | 'full';        // ثبت دستی: با/بدون صفر اول
 }

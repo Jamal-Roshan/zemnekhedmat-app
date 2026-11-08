@@ -57,3 +57,56 @@ export function normalizeNationalId(input: string | number | null | undefined): 
   }
   return code;
 }
+
+/* ------------------------------------------------------------------ */
+/* تنظیمات صفر ابتدایی کد ملی (از بخش تنظیمات برنامه)                  */
+/* ------------------------------------------------------------------ */
+export type NidExportZeros = 'keep' | 'strip';
+export type NidImportMode = 'auto' | 'with' | 'without';
+export type NidManualMode = 'flexible' | 'full';
+
+export interface NationalIdConfig {
+  nidExportZeros: NidExportZeros;  // keep: ده رقمی با صفر | strip: بدون صفرهای ابتدایی
+  nidImportMode: NidImportMode;    // فایل اکسل ورودی: تشخیص خودکار | دارای صفر | بدون صفر
+  nidManualMode: NidManualMode;    // ثبت دستی: flexible = با/بدون صفر | full = فقط ده رقم کامل
+}
+
+let config: NationalIdConfig = {
+  nidExportZeros: 'keep',
+  nidImportMode: 'auto',
+  nidManualMode: 'flexible',
+};
+
+export function setNationalIdConfig(c: Partial<NationalIdConfig>): void {
+  config = {
+    nidExportZeros: c.nidExportZeros ?? config.nidExportZeros,
+    nidImportMode: c.nidImportMode ?? config.nidImportMode,
+    nidManualMode: c.nidManualMode ?? config.nidManualMode,
+  };
+}
+
+export function getNationalIdConfig(): NationalIdConfig {
+  return config;
+}
+
+/** کد ملی برای خروجی اکسل، مطابق تنظیمات */
+export function formatNationalIdForExport(input: string | number | null | undefined): string {
+  const full = normalizeNationalId(input);
+  if (!full) return '';
+  if (config.nidExportZeros === 'strip') return full.replace(/^0+/, '') || '0';
+  return full;
+}
+
+/** بررسی کد ملی در ثبت دستی (پرسنل تکی، مهمان، ویرایش) */
+export function checkManualNationalId(input: string): { ok: boolean; value: string; error?: string } {
+  const digits = toEnglishDigits(String(input ?? '')).replace(/\D/g, '');
+  if (!digits) return { ok: true, value: '' };
+  if (config.nidManualMode === 'full' && digits.length !== 10) {
+    return { ok: false, value: digits, error: 'طبق تنظیمات، کد ملی باید ده رقم کامل (با صفرهای ابتدایی) وارد شود.' };
+  }
+  const value = normalizeNationalId(digits);
+  if (!isValidIranianNationalId(value)) {
+    return { ok: false, value, error: 'کد ملی نامعتبر است! الگوی ده رقمی و رقم کنترلی ثبت احوال مطابقت ندارد.' };
+  }
+  return { ok: true, value };
+}

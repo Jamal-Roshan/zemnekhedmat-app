@@ -22,7 +22,7 @@ import {
 import { Gender, Personnel, ThemeName } from '../types';
 import { downloadPersonnelTemplateExcel, exportPersonnelToExcel, parsePersonnelExcel } from '../utils/excel';
 import { getTodayJalali, toEnglishDigits, toPersianDigits } from '../utils/jalali';
-import { isValidIranianNationalId, normalizeNationalId } from '../utils/nationalId';
+import { checkManualNationalId, normalizeNationalId } from '../utils/nationalId';
 import { getThemeConfig } from '../utils/theme';
 import { ConfirmModal } from './ConfirmModal';
 import { useToast } from './Toast';
@@ -134,8 +134,9 @@ export const PersonnelManagement: React.FC<Props> = ({
 
     // Validate National ID pattern and checksum if entered
     if (form.nationalId.trim()) {
-      if (!isValidIranianNationalId(cleanNId)) {
-        showToast('کد ملی وارد شده نامعتبر است! الگوی ده رقمی و رقم کنترلی ثبت احوال مطابقت ندارد.', 'error');
+      const chk = checkManualNationalId(form.nationalId);
+      if (!chk.ok) {
+        showToast(chk.error || 'کد ملی نامعتبر است.', 'error');
         return;
       }
     }
@@ -839,7 +840,7 @@ export const PersonnelManagement: React.FC<Props> = ({
                     placeholder="مثلاً: 0010000003"
                     className={`w-full px-3.5 py-2 text-sm bg-slate-50 dark:bg-slate-800 border rounded-xl font-mono focus:outline-hidden ${
                       form.nationalId.trim().length >= 8
-                        ? isValidIranianNationalId(normalizeNationalId(form.nationalId))
+                        ? checkManualNationalId(form.nationalId).ok
                           ? 'border-emerald-500 focus:border-emerald-600 text-emerald-700 dark:text-emerald-300'
                           : 'border-rose-400 focus:border-rose-500 text-rose-600'
                         : 'border-slate-300 dark:border-slate-700'
@@ -847,7 +848,7 @@ export const PersonnelManagement: React.FC<Props> = ({
                   />
                   {form.nationalId.trim() && (
                     <div className="mt-1 text-[11px] font-semibold">
-                      {isValidIranianNationalId(normalizeNationalId(form.nationalId)) ? (
+                      {checkManualNationalId(form.nationalId).ok ? (
                         <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                           <Check className="w-3.5 h-3.5" />
                           الگوی کد ملی معتبر و صحیح است

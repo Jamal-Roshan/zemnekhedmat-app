@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { setNationalIdConfig } from './utils/nationalId';
 import { 
   UserCheck, 
   BookOpen, 
@@ -35,6 +36,8 @@ export default function App() {
   const [courses, setCourses] = useState<Course[]>(() => StorageAPI.getCourses());
   const [attendance, setAttendance] = useState<AttendanceRecord[]>(() => StorageAPI.getAttendance());
   const [settings, setSettings] = useState<AppSettings>(() => StorageAPI.getSettings());
+  // تنظیمات صفر اول کد ملی باید پیش از رندر کامپوننت‌ها اعمال شود
+  setNationalIdConfig(settings);
 
   // UI state
   const [currentTab, setCurrentTab] = useState<'attendance' | 'courses' | 'personnel' | 'reports' | 'settings'>('attendance');

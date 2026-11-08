@@ -2,7 +2,8 @@ import * as XLSX from 'xlsx';
 import { AttendanceRecord, Course, CourseSession, Gender, Personnel } from '../types';
 import { getTodayJalali, toEnglishDigits, toPersianDigits } from './jalali';
 import { saveWorkbook } from './nativeFile';
-import { isValidIranianNationalId, normalizeNationalId } from './nationalId';
+import { isValidIranianNationalId, normalizeNationalId, formatNationalIdForExport, getNationalIdConfig } from './nationalId';
+import { normalizePersian } from './persianText';
 
 export interface ImportPersonnelResult {
   added: number;
@@ -36,7 +37,7 @@ export function applyRTLToWorkbook(workbook: XLSX.WorkBook, sheetNames?: string[
  */
 function cleanText(val: unknown): string {
   if (val === undefined || val === null) return '';
-  return String(val)
+  return normalizePersian(String(val))
     .replace(/[\u200B-\u200D\uFEFF\u200E\u200F]/g, '')
     .trim();
 }
@@ -129,6 +130,12 @@ export async function parsePersonnelExcel(
 
     let personnelCode = toEnglishDigits(personnelCodeRaw).replace(/\s+/g, '');
     let nationalId = normalizeNationalId(nationalIdRaw);
+    {
+      const rawDigits = toEnglishDigits(nationalIdRaw).replace(/\D/g, '');
+      if (getNationalIdConfig().nidImportMode === 'with' && rawDigits && rawDigits.length < 10) {
+        errors.push(`ردیف ${rowNum}: طبق تنظیمات، فایل باید کد ملی را با صفر اول (ده رقمی) داشته باشد؛ «${nationalIdRaw}» کوتاه‌تر است و به‌صورت خودکار با صفر تکمیل شد.`);
+      }
+    }
 
     // Validate National ID pattern and checksum if provided
     if (nationalId && !isValidIranianNationalId(nationalId)) {
@@ -207,11 +214,14 @@ export async function parsePersonnelExcel(
 /**
  * Generate and trigger download of Excel sample template
  */
+const tplNid = (id: string) =>
+  getNationalIdConfig().nidImportMode === 'without' ? id.replace(/^0+/, '') : id;
+
 export function downloadPersonnelTemplateExcel() {
   const sampleData = [
     {
       'کد پرسنلی': '1001',
-      'کد ملی': '0010000003',
+      'کد ملی': tplNid('0010000003'),
       'نام': 'احمد',
       'نام خانوادگی': 'رضایی',
       'جنسیت': 'مرد',
@@ -219,7 +229,7 @@ export function downloadPersonnelTemplateExcel() {
     },
     {
       'کد پرسنلی': '1002',
-      'کد ملی': '0079876544',
+      'کد ملی': tplNid('0079876544'),
       'نام': 'زهرا',
       'نام خانوادگی': 'حسینی',
       'جنسیت': 'زن',
@@ -227,7 +237,7 @@ export function downloadPersonnelTemplateExcel() {
     },
     {
       'کد پرسنلی': '1003',
-      'کد ملی': '0451234561',
+      'کد ملی': tplNid('0451234561'),
       'نام': 'محمد',
       'نام خانوادگی': 'صادقی',
       'جنسیت': 'مرد',
@@ -235,7 +245,7 @@ export function downloadPersonnelTemplateExcel() {
     },
     {
       'کد پرسنلی': '1004',
-      'کد ملی': '1234567891',
+      'کد ملی': tplNid('1234567891'),
       'نام': 'مریم',
       'نام خانوادگی': 'مرادی',
       'جنسیت': 'زن',
@@ -267,7 +277,7 @@ export function exportPersonnelToExcel(personnelList: Personnel[]) {
   const rows = personnelList.map((p, idx) => ({
     'ردیف': idx + 1,
     'کد پرسنلی': p.personnelCode,
-    'کد ملی': p.nationalId,
+    'کد ملی': formatNationalIdForExport(p.nationalId),
     'نام': p.firstName,
     'نام خانوادگی': p.lastName,
     'جنسیت': p.gender === 'female' ? 'زن' : 'مرد',
@@ -375,7 +385,7 @@ export function exportCourseAttendanceExcel(
     const rowObj: Record<string, unknown> = {
       'ردیف': rowIdx++,
       'کد پرسنلی': personnel.personnelCode,
-      'کد ملی': personnel.nationalId || '-',
+      'کد ملی': formatNationalIdForExport(personnel.nationalId) || '-',
       'نام و نام خانوادگی': `${personnel.firstName} ${personnel.lastName}`.trim(),
       'جنسیت': personnel.gender === 'female' ? 'زن' : 'مرد',
       'محل خدمت': personnel.workLocation || '-',
