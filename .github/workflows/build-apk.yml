@@ -15,7 +15,21 @@ jobs:
       - run: npm install
       - run: npx cap add android
       - run: npm run android:sync
-      - run: cd android && ./gradlew assembleDebug
+      - name: Make Gradle download more reliable
+        run: |
+          f=android/gradle/wrapper/gradle-wrapper.properties
+          sed -i 's/networkTimeout=.*/networkTimeout=180000/' $f
+          sed -i 's/-all\.zip/-bin.zip/' $f
+          cat $f
+      - name: Build APK (retry on network errors)
+        run: |
+          cd android
+          for i in 1 2 3 4 5; do
+            ./gradlew assembleDebug --no-daemon && exit 0
+            echo "Attempt $i failed; retrying in 30s..."
+            sleep 30
+          done
+          exit 1
       - uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
