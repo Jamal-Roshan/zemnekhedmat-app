@@ -25,6 +25,7 @@ import type { ImportErrorRow } from '../utils/excel';
 import { getTodayJalali, toEnglishDigits, toPersianDigits } from '../utils/jalali';
 import { checkManualNationalId, normalizeNationalId } from '../utils/nationalId';
 import { getThemeConfig } from '../utils/theme';
+import { Accordion } from './Accordion';
 import { ConfirmModal } from './ConfirmModal';
 import { useToast } from './Toast';
 
@@ -69,7 +70,7 @@ export const PersonnelManagement: React.FC<Props> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [isUploadCardExpanded, setIsUploadCardExpanded] = useState(true);
+  const [isUploadCardExpanded, setIsUploadCardExpanded] = useState(false);
   const inlineFileInputRef = useRef<HTMLInputElement>(null);
 
   // Form State
@@ -467,6 +468,7 @@ export const PersonnelManagement: React.FC<Props> = ({
             )}
 
             {/* Smart Upsert Info Tips */}
+            <Accordion title="راهنما و توضیحات ورود اطلاعات" icon={<Info className="w-4 h-4 text-teal-600" />} className="!rounded-2xl !shadow-none">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-slate-600 dark:text-slate-300">
               <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200/80 dark:border-slate-800 flex items-start gap-2.5">
                 <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
@@ -492,6 +494,7 @@ export const PersonnelManagement: React.FC<Props> = ({
                 </div>
               </div>
             </div>
+            </Accordion>
           </div>
         )}
       </div>

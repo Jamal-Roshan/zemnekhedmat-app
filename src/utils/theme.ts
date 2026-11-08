@@ -106,7 +106,7 @@ export function getThemeConfig(themeName: ThemeName): ThemeConfig {
   return THEMES.find((t) => t.id === themeName) || THEMES[0];
 }
 
-export function applyTheme(themeName: ThemeName, darkMode: boolean, fontSize: FontSize = 'normal') {
+export function applyTheme(themeName: ThemeName, darkMode: boolean, fontSize: FontSize = 'normal', fontSizePx?: number) {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
   const config = getThemeConfig(themeName);
@@ -122,7 +122,7 @@ export function applyTheme(themeName: ThemeName, darkMode: boolean, fontSize: Fo
     large: '18px',
     xlarge: '20px',
   };
-  root.style.fontSize = fontSizes[fontSize] || '16px';
+  root.style.fontSize = fontSizePx ? `${Math.min(26, Math.max(12, fontSizePx))}px` : fontSizes[fontSize] || '16px';
 
   // Toggle Dark Mode
   if (darkMode) {

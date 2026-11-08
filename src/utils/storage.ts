@@ -232,6 +232,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'emerald',
   darkMode: false,
   fontSize: 'normal',
+  fontSizePx: 16,
   autoBackup: true,
   autoBackupIntervalMinutes: 20,
   soundEnabled: true,

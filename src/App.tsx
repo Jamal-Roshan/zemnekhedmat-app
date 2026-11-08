@@ -47,8 +47,8 @@ export default function App() {
 
   // Apply dark mode, theme, & font size to root
   useEffect(() => {
-    applyTheme(settings.theme, settings.darkMode, settings.fontSize);
-  }, [settings.theme, settings.darkMode, settings.fontSize]);
+    applyTheme(settings.theme, settings.darkMode, settings.fontSize, settings.fontSizePx);
+  }, [settings.theme, settings.darkMode, settings.fontSize, settings.fontSizePx]);
 
   // Network online / offline listener
   useEffect(() => {

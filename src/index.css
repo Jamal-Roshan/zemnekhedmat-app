@@ -51,6 +51,13 @@
   src: url('/fonts/Vazir-Bold.woff2') format('woff2');
 }
 
+/* فونت وزیر برای همه‌ی کلاس‌های font-sans و font-mono (در غیر این صورت Tailwind فونت پیش‌فرض خودش را اعمال می‌کند) */
+@theme {
+  --font-sans: 'Vazirmatn', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-mono: 'Vazirmatn', ui-monospace, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-serif: 'Vazirmatn', ui-serif, Georgia, serif;
+}
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
@@ -58,7 +65,7 @@
     --font-vazir: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   }
   
-  html {
+  html, body, button, input, select, textarea {
     font-family: var(--font-vazir);
     direction: rtl;
     -webkit-tap-highlight-color: transparent;

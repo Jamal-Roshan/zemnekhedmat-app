@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { Accordion } from './Accordion';
 import { 
   CheckCircle, 
   Clock, 
@@ -62,6 +63,9 @@ export const FastAttendanceScanner: React.FC<Props> = ({
 }) => {
   const { showToast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
+  const [coursesOpen, setCoursesOpen] = useState(false);
+  const [coursePage, setCoursePage] = useState(0);
+  const [attPage, setAttPage] = useState(0);
   const [selectedStatus, setSelectedStatus] = useState<AttendanceStatus>('present');
   const [note, setNote] = useState('');
   const [successToast, setSuccessToast] = useState<{ name: string; time: string; status: AttendanceStatus; isGuest?: boolean } | null>(null);
@@ -133,6 +137,21 @@ export const FastAttendanceScanner: React.FC<Props> = ({
   const attendeeIdsSet = useMemo(() => {
     return new Set(currentSessionAttendees.map(a => a.personnelId));
   }, [currentSessionAttendees]);
+
+  // صفحه‌بندی دوره‌ها (بیش از ۱۰ دوره) و لیست حاضرین (بیش از ۵۰ نفر)
+  const COURSES_PER_PAGE = 10;
+  const ATT_PER_PAGE = 50;
+  const coursePageCount = Math.max(1, Math.ceil(courses.length / COURSES_PER_PAGE));
+  const safeCoursePage = Math.min(coursePage, coursePageCount - 1);
+  const pagedCourses = courses.slice(safeCoursePage * COURSES_PER_PAGE, (safeCoursePage + 1) * COURSES_PER_PAGE);
+
+  const attPageCount = Math.max(1, Math.ceil(currentSessionAttendees.length / ATT_PER_PAGE));
+  const safeAttPage = Math.min(attPage, attPageCount - 1);
+  const attStart = safeAttPage * ATT_PER_PAGE;
+  const pagedAttendees = useMemo(
+    () => currentSessionAttendees.slice(attStart, attStart + ATT_PER_PAGE),
+    [currentSessionAttendees, attStart]
+  );
 
   // Theme primary classes
   const themeObj = getThemeConfig(currentTheme);
@@ -297,37 +316,81 @@ export const FastAttendanceScanner: React.FC<Props> = ({
 
   return (
     <div className="space-y-6">
+      {/* Active courses accordion */}
+      <Accordion
+        open={coursesOpen}
+        onOpenChange={setCoursesOpen}
+        title="دوره‌های آموزشی فعال"
+        subtitle={activeCourse ? `انتخاب‌شده: ${activeCourse.name} (${activeCourse.code})` : 'دوره‌ای انتخاب نشده است'}
+        icon={<Calendar className="w-4 h-4 text-teal-600 dark:text-teal-400" />}
+        badge={
+          <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+            {toPersianDigits(courses.length)} دوره
+          </span>
+        }
+      >
+        {courses.length === 0 ? (
+          <p className="text-xs text-slate-400">هنوز دوره‌ای تعریف نشده است. از بخش دوره‌ها یک دوره بسازید.</p>
+        ) : (
+          <div className="grid grid-cols-1 gap-2">
+            {pagedCourses.map(course => {
+              const isActive = course.id === activeCourse?.id;
+              return (
+                <button
+                  key={course.id}
+                  type="button"
+                  onClick={() => {
+                    onSelectCourse(course.id);
+                    if (course.sessions.length > 0) onSelectSession(course.sessions[0].id);
+                    setCoursesOpen(false);
+                  }}
+                  className={`w-full text-right p-3 rounded-2xl border transition cursor-pointer ${
+                    isActive
+                      ? 'border-teal-500 bg-teal-50 dark:bg-teal-950/40 ring-2 ring-teal-500/20'
+                      : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 hover:border-slate-300 dark:hover:border-slate-600'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-sm text-slate-800 dark:text-slate-100">{course.name}</span>
+                    {isActive && <CheckCircle className="w-4 h-4 text-teal-600 shrink-0" />}
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    کد: {toPersianDigits(course.code)} | مدرس: {course.instructor || '-'} | {toPersianDigits(course.sessions.length)} جلسه
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {courses.length > COURSES_PER_PAGE && (
+          <div className="flex items-center justify-between gap-2 text-xs text-slate-600 dark:text-slate-300">
+            <button
+              type="button"
+              disabled={safeCoursePage === 0}
+              onClick={() => setCoursePage(safeCoursePage - 1)}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-semibold disabled:opacity-40"
+            >
+              قبلی
+            </button>
+            <span>
+              صفحه <strong>{toPersianDigits(safeCoursePage + 1)}</strong> از <strong>{toPersianDigits(coursePageCount)}</strong>
+            </span>
+            <button
+              type="button"
+              disabled={safeCoursePage >= coursePageCount - 1}
+              onClick={() => setCoursePage(safeCoursePage + 1)}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-semibold disabled:opacity-40"
+            >
+              بعدی
+            </button>
+          </div>
+        )}
+      </Accordion>
+
       {/* Active Course & Session Selector Bar */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-200/80 dark:border-slate-800 transition">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          {/* Course select */}
-          <div className="flex-1 space-y-1.5">
-            <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-              <Calendar className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-              دوره آموزشی فعال:
-            </label>
-            <div className="relative">
-              <select
-                value={activeCourse?.id || ''}
-                onChange={(e) => {
-                  onSelectCourse(e.target.value);
-                  const found = courses.find(c => c.id === e.target.value);
-                  if (found && found.sessions.length > 0) {
-                    onSelectSession(found.sessions[0].id);
-                  }
-                }}
-                className="w-full appearance-none bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-hidden focus:ring-2 focus:ring-teal-500 transition"
-              >
-                {courses.map(course => (
-                  <option key={course.id} value={course.id}>
-                    {course.name} ({course.code}) - {course.instructor}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-4 h-4 text-slate-400 absolute left-3 top-3.5 pointer-events-none" />
-            </div>
-          </div>
-
           {/* Session select & quick add */}
           <div className="flex-1 space-y-1.5">
             <div className="flex items-center justify-between">
@@ -671,6 +734,7 @@ export const FastAttendanceScanner: React.FC<Props> = ({
         </div>
 
         {currentSessionAttendees.length > 0 ? (
+          <>
           <div className="mt-4 overflow-x-auto">
             <table className="w-full text-right text-xs sm:text-sm">
               <thead>
@@ -687,7 +751,9 @@ export const FastAttendanceScanner: React.FC<Props> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {currentSessionAttendees.map((att, idx) => (
+                {pagedAttendees.map((att, i) => {
+                  const idx = attStart + i;
+                  return (
                   <tr key={att.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
                     <td className="py-3 px-3 text-slate-400 font-mono">{toPersianDigits(idx + 1)}</td>
                     <td className="py-3 px-3 font-bold text-slate-800 dark:text-slate-200">
@@ -735,10 +801,36 @@ export const FastAttendanceScanner: React.FC<Props> = ({
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
+            {currentSessionAttendees.length > ATT_PER_PAGE && (
+              <div className="flex items-center justify-between gap-2 pt-3 text-xs text-slate-600 dark:text-slate-300">
+                <button
+                  type="button"
+                  disabled={safeAttPage === 0}
+                  onClick={() => setAttPage(safeAttPage - 1)}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-semibold disabled:opacity-40"
+                >
+                  قبلی
+                </button>
+                <span>
+                  نمایش {toPersianDigits(attStart + 1)} تا {toPersianDigits(Math.min(attStart + ATT_PER_PAGE, currentSessionAttendees.length))} از {toPersianDigits(currentSessionAttendees.length)} نفر
+                  {' — '}صفحه <strong>{toPersianDigits(safeAttPage + 1)}</strong> از <strong>{toPersianDigits(attPageCount)}</strong>
+                </span>
+                <button
+                  type="button"
+                  disabled={safeAttPage >= attPageCount - 1}
+                  onClick={() => setAttPage(safeAttPage + 1)}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-semibold disabled:opacity-40"
+                >
+                  بعدی
+                </button>
+              </div>
+            )}
+          </>
         ) : (
           <div className="py-12 text-center">
             <UserCheck className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />

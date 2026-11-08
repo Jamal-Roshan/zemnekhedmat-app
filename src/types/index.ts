@@ -91,6 +91,7 @@ export interface AppSettings {
   theme: ThemeName;
   darkMode: boolean;
   fontSize: FontSize;
+  fontSizePx?: number;           // اندازه قلم به پیکسل (۱۲ تا ۲۶)
   autoBackup: boolean;
   autoBackupIntervalMinutes: number; // مثلاً هر ۳۰ دقیقه
   soundEnabled: boolean;

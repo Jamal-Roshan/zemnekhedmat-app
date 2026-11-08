@@ -22,11 +22,13 @@ import {
   FileCode2,
   Type
 } from 'lucide-react';
-import { AppSettings, BackupSnapshot, Course, Personnel, AttendanceRecord, ThemeName, FontSize } from '../types';
+import { AppSettings, BackupSnapshot, Course, Personnel, AttendanceRecord, ThemeName } from '../types';
 import { THEMES, getThemeConfig } from '../utils/theme';
 import { StorageAPI } from '../utils/storage';
 import { toPersianDigits } from '../utils/jalali';
 import { ConfirmModal } from './ConfirmModal';
+import { Accordion } from './Accordion';
+import { Hash } from 'lucide-react';
 import { useToast } from './Toast';
 
 interface Props {
@@ -48,6 +50,14 @@ export const SettingsAndBackup: React.FC<Props> = ({
 }) => {
   const { showToast } = useToast();
   const themeObj = getThemeConfig(settings.theme);
+
+  // اندازه قلم (پیکسل) - سازگار با تنظیمات قدیمی small/normal/large/xlarge
+  const legacyPx: Record<string, number> = { small: 14, normal: 16, large: 18, xlarge: 20 };
+  const fontPx = Math.min(26, Math.max(12, settings.fontSizePx ?? legacyPx[settings.fontSize || 'normal'] ?? 16));
+  const setFontPx = (px: number) => {
+    const v = Math.min(26, Math.max(12, Math.round(px)));
+    onUpdateSettings({ ...settings, fontSizePx: v });
+  };
 
   const [backupsList, setBackupsList] = useState<BackupSnapshot[]>(StorageAPI.getBackups());
   const [dangerConfirmType, setDangerConfirmType] = useState<'personnel' | 'courses' | 'all' | null>(null);
@@ -150,11 +160,7 @@ export const SettingsAndBackup: React.FC<Props> = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* SECTION 1: THEME & APPEARANCE */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-5">
-          <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2">
-            <Palette className="w-4 h-4 text-teal-600" />
-            تغییر رنگ و تم اپلیکیشن
-          </h3>
+        <Accordion defaultOpen title="تغییر رنگ، تم و اندازه قلم" icon={<Palette className="w-4 h-4 text-teal-600" />}>
 
           {/* Color Palettes Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -182,55 +188,60 @@ export const SettingsAndBackup: React.FC<Props> = ({
             ))}
           </div>
 
-          {/* FONT SIZE SCALING PANEL */}
+          {/* FONT SIZE SLIDER */}
           <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="font-bold text-xs text-slate-800 dark:text-slate-200 flex items-center gap-2">
                 <Type className="w-4 h-4 text-teal-600" />
-                اندازه قلم و متون سامانه (Font Size)
+                اندازه قلم و متون سامانه
               </h4>
-              <span className="text-[11px] font-semibold text-slate-400">
-                {settings.fontSize === 'small' && 'کوچک (۱۴px)'}
-                {(!settings.fontSize || settings.fontSize === 'normal') && 'استاندارد (۱۶px)'}
-                {settings.fontSize === 'large' && 'بزرگ (۱۸px)'}
-                {settings.fontSize === 'xlarge' && 'خیلی بزرگ (۲۰px)'}
+              <span className="text-xs font-bold text-teal-700 dark:text-teal-300 font-mono">
+                {toPersianDigits(fontPx)} پیکسل
               </span>
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              جهت خوانایی بهتر در تبلت یا گوشی، سایز نمایش قلم را بر اساس نیاز خود تنظیم نمایید:
+              با کشیدن لغزنده اندازه نوشته‌ها را از ۱۲ تا ۲۶ پیکسل تنظیم کنید (استاندارد: ۱۶).
             </p>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              {[
-                { id: 'small', label: 'کوچک', sizeText: '۱۴px', symbol: 'A-' },
-                { id: 'normal', label: 'استاندارد', sizeText: '۱۶px', symbol: 'A' },
-                { id: 'large', label: 'بزرگ', sizeText: '۱۸px', symbol: 'A+' },
-                { id: 'xlarge', label: 'خیلی بزرگ', sizeText: '۲۰px', symbol: 'A++' },
-              ].map((fOption) => {
-                const isSelected = (settings.fontSize || 'normal') === fOption.id;
-                return (
-                  <button
-                    key={fOption.id}
-                    type="button"
-                    onClick={() => {
-                      onUpdateSettings({ ...settings, fontSize: fOption.id as FontSize });
-                      showToast(`اندازه قلم روی حالت «${fOption.label}» تنظیم شد.`, 'info');
-                    }}
-                    className={`p-3 rounded-2xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-1 ${
-                      isSelected
-                        ? 'border-teal-500 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 ring-2 ring-teal-500/20 shadow-xs'
-                        : 'border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-850'
-                    }`}
-                  >
-                    <span className="font-serif font-black text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                      {fOption.symbol}
-                    </span>
-                    <span className="text-xs font-bold">{fOption.label}</span>
-                    <span className="text-[10px] text-slate-400 font-mono">{fOption.sizeText}</span>
-                  </button>
-                );
-              })}
+            <div className="flex items-center gap-3" dir="ltr">
+              <button
+                type="button"
+                onClick={() => setFontPx(fontPx - 1)}
+                className="w-9 h-9 shrink-0 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-black text-xs hover:bg-slate-50 dark:hover:bg-slate-800"
+              >
+                A-
+              </button>
+              <input
+                type="range"
+                min={12}
+                max={26}
+                step={1}
+                value={fontPx}
+                onChange={(e) => setFontPx(Number(e.target.value))}
+                className="w-full accent-teal-600 cursor-pointer"
+                aria-label="اندازه قلم"
+              />
+              <button
+                type="button"
+                onClick={() => setFontPx(fontPx + 1)}
+                className="w-9 h-9 shrink-0 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-black text-base hover:bg-slate-50 dark:hover:bg-slate-800"
+              >
+                A+
+              </button>
             </div>
+            <div className="flex justify-between text-[10px] text-slate-400 font-mono" dir="ltr">
+              <span>۱۲</span>
+              <span>۱۶</span>
+              <span>۲۰</span>
+              <span>۲۶</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setFontPx(16)}
+              className="text-[11px] font-semibold text-teal-600 dark:text-teal-400 hover:underline"
+            >
+              بازگشت به اندازه استاندارد
+            </button>
 
             {/* Live Text Preview Box */}
             <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700/60 text-right space-y-1">
@@ -317,13 +328,12 @@ export const SettingsAndBackup: React.FC<Props> = ({
               </div>
             </div>
           </div>
-        </div>
+        </Accordion>
 
         {/* SECTION: NATIONAL ID LEADING ZEROS */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-5">
+        <Accordion title="تنظیمات صفر ابتدایی کد ملی" icon={<Hash className="w-4 h-4 text-teal-600" />}>
           <div>
-            <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100">تنظیمات صفر ابتدایی کد ملی</h3>
-            <p className="text-[11px] text-slate-400 mt-1 leading-5">
+            <p className="text-[11px] text-slate-400 leading-5">
               کدهای ملی که با یک یا دو صفر شروع می‌شوند (مثل ۰۰۱۲۳۴۵۶۷۸) در اکسل ممکن است بدون صفر ذخیره شوند.
               صحت‌سنجی کد ملی در همه حالت‌ها هوشمند است و صفرهای حذف‌شده را خودکار تکمیل می‌کند.
             </p>
@@ -382,19 +392,18 @@ export const SettingsAndBackup: React.FC<Props> = ({
               </div>
             );
           })}
-        </div>
+        </Accordion>
 
         {/* SECTION 2: AUTO-BACKUP & DATABASE SECURITY */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-5">
-          <div className="flex items-center justify-between">
-            <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <Database className="w-4 h-4 text-teal-600" />
-              سیستم پشتیبان‌گیری خودکار و بازیابی
-            </h3>
+        <Accordion
+          title="پشتیبان‌گیری خودکار و بازیابی"
+          icon={<Database className="w-4 h-4 text-teal-600" />}
+          badge={
             <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
               فعال
             </span>
-          </div>
+          }
+        >
 
           <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
             سامانه به طور پیوسته نسخه‌های پشتیبان از دیتابیس تهیه نموده و امکان دانلود فایل پشتیبان کامل با فرمت استاندارد JSON و بازگردانی آن را فراهم می‌کند.
@@ -492,20 +501,16 @@ export const SettingsAndBackup: React.FC<Props> = ({
               <p className="text-xs text-slate-400">هنوز نسخه‌ای ذخیره نشده است.</p>
             )}
           </div>
-        </div>
+        </Accordion>
       </div>
 
       {/* SECTION 3: DANGER ZONE (CONFIRMED BULK DELETES) */}
-      <div className="bg-rose-50/60 dark:bg-rose-950/20 rounded-3xl p-6 border border-rose-200 dark:border-rose-900/60 space-y-4">
-        <div className="flex items-center gap-2.5 text-rose-800 dark:text-rose-300">
-          <ShieldAlert className="w-5 h-5 text-rose-600 shrink-0" />
-          <div>
-            <h3 className="font-black text-sm">منطقه عملیات حساس (Danger Zone)</h3>
-            <p className="text-xs text-rose-600/80 dark:text-rose-400">
-              این عملیات غیرقابل بازگشت هستند و مستلزم تایید کتبی می‌باشند.
-            </p>
-          </div>
-        </div>
+      <Accordion
+        variant="danger"
+        title="منطقه عملیات حساس (Danger Zone)"
+        subtitle="این عملیات غیرقابل بازگشت هستند و مستلزم تایید کتبی می‌باشند."
+        icon={<ShieldAlert className="w-5 h-5 text-rose-600 shrink-0" />}
+      >
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
           {/* Delete All Personnel */}
@@ -559,7 +564,7 @@ export const SettingsAndBackup: React.FC<Props> = ({
             </p>
           </button>
         </div>
-      </div>
+      </Accordion>
 
       {/* Danger Confirmation Modal */}
       {dangerConfirmType && (
