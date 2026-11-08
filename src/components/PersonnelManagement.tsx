@@ -20,7 +20,8 @@ import {
   ArrowDownToLine
 } from 'lucide-react';
 import { Gender, Personnel, ThemeName } from '../types';
-import { downloadPersonnelTemplateExcel, exportPersonnelToExcel, parsePersonnelExcel } from '../utils/excel';
+import { downloadPersonnelTemplateExcel, exportPersonnelToExcel, parsePersonnelExcel, exportImportErrorsExcel } from '../utils/excel';
+import type { ImportErrorRow } from '../utils/excel';
 import { getTodayJalali, toEnglishDigits, toPersianDigits } from '../utils/jalali';
 import { checkManualNationalId, normalizeNationalId } from '../utils/nationalId';
 import { getThemeConfig } from '../utils/theme';
@@ -63,6 +64,7 @@ export const PersonnelManagement: React.FC<Props> = ({
     updated: number;
     total: number;
     errors: string[];
+    errorRows: ImportErrorRow[];
   } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -196,8 +198,13 @@ export const PersonnelManagement: React.FC<Props> = ({
         updated: res.updated,
         total: res.total,
         errors: res.errors,
+        errorRows: res.errorRows,
       });
-      showToast(`فایل اکسل با موفقیت پردازش شد: ${res.added} پرسنل جدید، ${res.updated} بروزرسانی`, 'success');
+      showToast(
+        `ورود اطلاعات انجام شد: ${res.added} پرسنل جدید، ${res.updated} بروزرسانی` +
+          (res.errorRows.length ? ` — ${res.errorRows.length} ردیف دارای خطا (جزئیات در پایین)` : ''),
+        res.errorRows.length ? 'warning' : 'success'
+      );
     } catch (err: unknown) {
       showToast('خطا در پردازش فایل اکسل: ' + (err instanceof Error ? err.message : String(err)), 'error');
     } finally {
@@ -436,13 +443,20 @@ export const PersonnelManagement: React.FC<Props> = ({
                 </div>
 
                 {importSummary.errors.length > 0 && (
-                  <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-200 dark:border-amber-900 text-xs text-amber-800 dark:text-amber-300 max-h-28 overflow-y-auto">
-                    <p className="font-bold mb-1">خطاهای جزئی ردیف‌های نامعتبر:</p>
-                    <ul className="list-disc list-inside space-y-0.5">
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-200 dark:border-amber-900 text-xs text-amber-800 dark:text-amber-300 overflow-y-auto">
+                    <p className="font-bold mb-1">ردیف‌های دارای خطا (سایر ردیف‌ها بدون مشکل ثبت شدند):</p>
+                    <ul className="max-h-40 overflow-y-auto list-disc list-inside space-y-0.5">
                       {importSummary.errors.map((e, i) => (
                         <li key={i}>{e}</li>
                       ))}
                     </ul>
+                    <button
+                      type="button"
+                      onClick={() => exportImportErrorsExcel(importSummary.errorRows)}
+                      className="mt-2 w-full py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition"
+                    >
+                      دریافت خروجی اکسل خطاها ({toPersianDigits(importSummary.errorRows.length)} ردیف)
+                    </button>
                   </div>
                 )}
               </div>
@@ -745,13 +759,20 @@ export const PersonnelManagement: React.FC<Props> = ({
                 </div>
 
                 {importSummary.errors.length > 0 && (
-                  <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-200 dark:border-amber-900 text-xs text-amber-800 dark:text-amber-300 max-h-32 overflow-y-auto">
-                    <p className="font-bold mb-1">خطاهای جزئی رد شده:</p>
-                    <ul className="list-disc list-inside space-y-0.5">
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-200 dark:border-amber-900 text-xs text-amber-800 dark:text-amber-300 overflow-y-auto">
+                    <p className="font-bold mb-1">ردیف‌های دارای خطا (سایر ردیف‌ها بدون مشکل ثبت شدند):</p>
+                    <ul className="max-h-40 overflow-y-auto list-disc list-inside space-y-0.5">
                       {importSummary.errors.map((e, i) => (
                         <li key={i}>{e}</li>
                       ))}
                     </ul>
+                    <button
+                      type="button"
+                      onClick={() => exportImportErrorsExcel(importSummary.errorRows)}
+                      className="mt-2 w-full py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition"
+                    >
+                      دریافت خروجی اکسل خطاها ({toPersianDigits(importSummary.errorRows.length)} ردیف)
+                    </button>
                   </div>
                 )}
 

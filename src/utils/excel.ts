@@ -10,7 +10,17 @@ export interface ImportPersonnelResult {
   updated: number;
   total: number;
   errors: string[];
+  errorRows: ImportErrorRow[];
   records: Personnel[];
+}
+
+export interface ImportErrorRow {
+  row: number;            // شماره ردیف در فایل اکسل
+  personnelCode: string;
+  nationalId: string;
+  fullName: string;
+  problem: string;
+  inserted: boolean;      // آیا با وجود خطا ثبت شد؟
 }
 
 /**
@@ -85,6 +95,7 @@ export async function parsePersonnelExcel(
   }
 
   const errors: string[] = [];
+  const errorRows: ImportErrorRow[] = [];
   const personnelMapByCode = new Map<string, Personnel>();
   const personnelMapByNationalId = new Map<string, Personnel>();
 
@@ -101,7 +112,8 @@ export async function parsePersonnelExcel(
   const nowJalali = getTodayJalali();
 
   rawRows.forEach((row, index) => {
-    const rowNum = index + 2; // considering header is row 1
+    const rowNum = index + 2;
+    try { // considering header is row 1
     
     // Find keys with case-insensitive / Persian tolerant matching
     const keys = Object.keys(row);
@@ -140,25 +152,37 @@ export async function parsePersonnelExcel(
 
     let personnelCode = toEnglishDigits(personnelCodeRaw).replace(/\s+/g, '');
     let nationalId = normalizeNationalId(nationalIdRaw);
+    const pushErr = (problem: string, inserted: boolean) => {
+      errors.push(`ردیف ${rowNum}: ${problem}`);
+      errorRows.push({
+        row: rowNum,
+        personnelCode: personnelCodeRaw,
+        nationalId: nationalIdRaw,
+        fullName: `${firstName} ${lastName}`.trim(),
+        problem,
+        inserted,
+      });
+    };
     {
       const rawDigits = toEnglishDigits(nationalIdRaw).replace(/\D/g, '');
-      if (getNationalIdConfig().nidImportMode === 'with' && rawDigits && rawDigits.length < 10) {
-        errors.push(`ردیف ${rowNum}: طبق تنظیمات، فایل باید کد ملی را با صفر اول (ده رقمی) داشته باشد؛ «${nationalIdRaw}» کوتاه‌تر است و به‌صورت خودکار با صفر تکمیل شد.`);
+      if (getNationalIdConfig().nidImportMode === 'with' && rawDigits && rawDigits.length < 10 && isValidIranianNationalId(nationalId)) {
+        pushErr(`طبق تنظیمات، فایل باید کد ملی را با صفر اول (ده رقمی) داشته باشد؛ «${nationalIdRaw}» کوتاه‌تر است و به‌صورت خودکار با صفر تکمیل شد.`, true);
       }
     }
 
     // Validate National ID pattern and checksum if provided
     if (nationalId && !isValidIranianNationalId(nationalId)) {
-      errors.push(`ردیف ${rowNum}: کد ملی «${nationalIdRaw}» نامعتبر است (عدم تطابق با الگوی ده رقمی ثبت احوال).`);
+      pushErr(`کد ملی «${nationalIdRaw}» نامعتبر است (عدم تطابق با الگوی ده رقمی ثبت احوال) و ردیف ثبت نشد.`, false);
+      return;
     }
 
     if (!personnelCode && !nationalId) {
-      errors.push(`ردیف ${rowNum}: کد پرسنلی و کد ملی هر دو خالی هستند و ردیف نادیده گرفته شد.`);
+      pushErr('کد پرسنلی و کد ملی هر دو خالی هستند و ردیف ثبت نشد.', false);
       return;
     }
 
     if (!firstName && !lastName) {
-      errors.push(`ردیف ${rowNum}: نام و نام خانوادگی خالی است.`);
+      pushErr('نام و نام خانوادگی خالی است و ردیف ثبت نشد.', false);
       return;
     }
 
@@ -210,6 +234,12 @@ export async function parsePersonnelExcel(
       if (newRecord.nationalId) personnelMapByNationalId.set(newRecord.nationalId, newRecord);
       addedCount++;
     }
+    } catch (err) {
+      // خطای غیرمنتظره در یک ردیف نباید ورود بقیه ردیف‌ها را متوقف کند
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push(`ردیف ${rowNum}: خطای غیرمنتظره (${msg}) و ردیف ثبت نشد.`);
+      errorRows.push({ row: rowNum, personnelCode: '', nationalId: '', fullName: '', problem: `خطای غیرمنتظره: ${msg}`, inserted: false });
+    }
   });
 
   return {
@@ -217,6 +247,7 @@ export async function parsePersonnelExcel(
     updated: updatedCount,
     total: rawRows.length,
     errors,
+    errorRows,
     records: updatedPersonnelList,
   };
 }
@@ -507,4 +538,27 @@ export function exportCoursesSummaryExcel(
   XLSX.utils.book_append_sheet(workbook, worksheet, 'گزارش_دوره‌ها');
   applyRTLToWorkbook(workbook, ['گزارش_دوره‌ها']);
   void saveWorkbook(workbook, `گزارش_جامع_دوره‌ها_${getTodayJalali().replace(/\//g, '-')}.xlsx`);
+}
+
+/**
+ * خروجی اکسل از خطاهای ورود اطلاعات پرسنل
+ */
+export function exportImportErrorsExcel(errorRows: ImportErrorRow[]) {
+  const rows = errorRows.map((e, i) => ({
+    'ردیف': i + 1,
+    'ردیف در فایل اکسل': e.row,
+    'کد پرسنلی': e.personnelCode,
+    'کد ملی': e.nationalId,
+    'نام و نام خانوادگی': e.fullName,
+    'شرح خطا': e.problem,
+    'وضعیت': e.inserted ? 'ثبت شد (نیازمند اصلاح)' : 'ثبت نشد',
+  }));
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+  worksheet['!cols'] = [
+    { wch: 8 }, { wch: 18 }, { wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 70 }, { wch: 22 },
+  ];
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'خطاهای_ورود');
+  applyRTLToWorkbook(workbook, ['خطاهای_ورود']);
+  void saveWorkbook(workbook, `خطاهای_ورود_پرسنل_${getTodayJalali().replace(/\//g, '-')}.xlsx`);
 }
