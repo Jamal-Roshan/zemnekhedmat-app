@@ -525,8 +525,8 @@ export const CourseManagement: React.FC<Props> = ({
 
       {/* Add / Edit Course Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200 overflow-y-auto">
-          <div className="w-full max-w-lg rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-right my-8">
+        <div className="app-modal-overlay bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="app-modal-panel w-full max-w-lg rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-right">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
               <h3 className="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
                 <BookOpen className={`w-5 h-5 ${themeObj.textPrimary}`} />
@@ -688,8 +688,8 @@ export const CourseManagement: React.FC<Props> = ({
 
       {/* Course Sessions Modal - Complete with EDIT and DELETE functionality */}
       {showSessionsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-xs p-4 animate-in fade-in duration-200 overflow-y-auto">
-          <div className="w-full max-w-xl rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-right my-8">
+        <div className="app-modal-overlay bg-black/65 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="app-modal-panel w-full max-w-xl rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-right">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <div className={`p-2 rounded-xl ${themeObj.bgLight} ${themeObj.textPrimary}`}>
@@ -873,6 +873,14 @@ export const CourseManagement: React.FC<Props> = ({
                 </button>
               </div>
             </form>
+
+            <button
+              type="button"
+              onClick={() => setShowSessionsModal(null)}
+              className="mt-4 w-full py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
+            >
+              بستن
+            </button>
           </div>
         </div>
       )}

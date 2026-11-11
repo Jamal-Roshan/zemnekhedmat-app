@@ -25,7 +25,7 @@ const safeName = (name: string) => name.replace(/[\\/:*?"<>|]/g, '_');
 
 /* ---------------- افزونه‌های اندروید ---------------- */
 interface NativeSavePlugin {
-  save(options: { fileName: string; mimeType: string; data: string }): Promise<{ saved: boolean; uri?: string }>;
+  save(options: { fileName: string; mimeType: string; data: string }): Promise<{ saved: boolean; uri?: string; bytes?: number }>;
 }
 const NativeSave = registerPlugin<NativeSavePlugin>('NativeSave');
 
@@ -64,23 +64,32 @@ async function shareBase64(base64: string, fileName: string): Promise<void> {
   }
 }
 
+function formatSize(bytes?: number): string {
+  if (!bytes) return '';
+  return bytes >= 1024 * 1024
+    ? ` (${(bytes / 1024 / 1024).toFixed(1)} مگابایت)`
+    : ` (${Math.max(1, Math.round(bytes / 1024))} کیلوبایت)`;
+}
+
 async function saveBase64(base64: string, fileName: string, mime: string): Promise<void> {
   const name = safeName(fileName);
+  if (!base64) {
+    notify('فایل خالی است و ذخیره نشد.', 'error');
+    return;
+  }
   if (isNative()) {
     try {
       const res = await NativeSave.save({ fileName: name, mimeType: mime, data: base64 });
-      if (res.saved) notify('فایل با موفقیت ذخیره شد.', 'success');
+      if (res.saved) notify('فایل با موفقیت ذخیره شد' + formatSize(res.bytes) + '.', 'success');
       else notify('ذخیره‌سازی فایل لغو شد.', 'info');
     } catch (e) {
+      // اگر ذخیره مستقیم ممکن نشد، پنجره اشتراک‌گذاری به‌عنوان راه جایگزین باز می‌شود تا فایل از بین نرود
       const msg = String((e as Error)?.message ?? e);
-      if (/not implemented|unimplemented/i.test(msg)) {
-        try {
-          await shareBase64(base64, name);
-        } catch (e2) {
-          notify('خطا در ذخیره فایل: ' + String((e2 as Error)?.message ?? e2), 'error');
-        }
-      } else {
-        notify('خطا در ذخیره فایل: ' + msg, 'error');
+      notify('ذخیره مستقیم ممکن نشد (' + msg + '). از پنجره اشتراک‌گذاری استفاده کنید.', 'warning');
+      try {
+        await shareBase64(base64, name);
+      } catch (e2) {
+        notify('خطا در ذخیره فایل: ' + String((e2 as Error)?.message ?? e2), 'error');
       }
     }
     return;

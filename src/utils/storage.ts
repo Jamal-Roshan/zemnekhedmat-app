@@ -265,13 +265,23 @@ function isUnset(key: string): boolean {
   }
 }
 
-function safeSet<T>(key: string, value: T): void {
+function safeSet<T>(key: string, value: T): boolean {
   try {
     localStorage.setItem(key, JSON.stringify(value));
+    return true;
   } catch (err) {
     console.error(`Error saving key ${key}:`, err);
+    return false;
   }
 }
+
+export type SnapshotResult =
+  | { status: 'saved'; snapshot: BackupSnapshot; kept: number }
+  | { status: 'unchanged' }
+  | { status: 'failed'; reason: string };
+
+// سقف حجم مجموع نسخه‌های پشتیبان داخلی (برای اینکه حافظه‌ی مرورگر پر نشود و ذخیره‌ی اصلی داده‌ها مختل نشود)
+const BACKUP_BUDGET_BYTES = 2_000_000;
 
 /**
  * Storage API
@@ -332,50 +342,76 @@ export const StorageAPI = {
     return safeParse<BackupSnapshot[]>(STORAGE_KEYS.BACKUPS, []);
   },
 
-  saveBackups(backups: BackupSnapshot[]): void {
-    safeSet(STORAGE_KEYS.BACKUPS, backups);
+  /** ذخیره‌ی نسخه‌های پشتیبان؛ در صورت کمبود حافظه قدیمی‌ترین‌ها حذف می‌شوند. */
+  saveBackups(backups: BackupSnapshot[]): boolean {
+    let list = backups.slice();
+    // رعایت سقف حجم (همیشه حداقل جدیدترین نسخه نگه داشته می‌شود)
+    while (list.length > 1 && list.reduce((sum, b) => sum + (b.sizeBytes || 0), 0) > BACKUP_BUDGET_BYTES) {
+      list.pop();
+    }
+    while (!safeSet(STORAGE_KEYS.BACKUPS, list)) {
+      if (list.length <= 1) return false;
+      list = list.slice(0, list.length - 1);
+    }
+    return true;
   },
 
   /**
-   * Take automatic or manual backup snapshot
+   * ساخت نسخه‌ی پشتیبان داخلی (دستی یا خودکار)
+   * - اگر داده‌ها نسبت به آخرین نسخه تغییری نکرده باشند و force نباشد، نسخه‌ی تکراری ساخته نمی‌شود.
+   * - در صورت کمبود حافظه، قدیمی‌ترین نسخه‌ها حذف می‌شوند؛ اگر باز هم جا نشد، خطا برگردانده می‌شود.
    */
   createBackupSnapshot(
     personnel: Personnel[],
     courses: Course[],
-    attendance: AttendanceRecord[]
-  ): BackupSnapshot {
-    const backupData = {
-      personnel,
-      courses,
-      attendance,
-      version: '1.0.0',
-    };
-    const jsonStr = JSON.stringify(backupData);
-    const snapshot: BackupSnapshot = {
-      id: 'snap_' + Date.now(),
-      timestamp: Date.now(),
-      jalaliDate: getTodayJalali(),
-      jalaliTime: getCurrentTime(),
-      personnelCount: personnel.length,
-      coursesCount: courses.length,
-      attendanceCount: attendance.length,
-      sizeBytes: new Blob([jsonStr]).size,
-      data: backupData,
-    };
+    attendance: AttendanceRecord[],
+    opts: { force?: boolean } = {}
+  ): SnapshotResult {
+    try {
+      const backupData = {
+        personnel: deepNormalize(personnel),
+        courses: deepNormalize(courses),
+        attendance: deepNormalize(attendance),
+        version: '1.0.0',
+      };
+      const jsonStr = JSON.stringify(backupData);
+      const currentBackups = this.getBackups();
 
-    const currentBackups = this.getBackups();
-    // Keep max 10 latest snapshots
-    const updated = [snapshot, ...currentBackups].slice(0, 10);
-    this.saveBackups(updated);
+      if (!opts.force && currentBackups.length > 0) {
+        if (JSON.stringify(currentBackups[0].data) === jsonStr) return { status: 'unchanged' };
+      }
 
-    // Update settings lastBackupDate
-    const settings = this.getSettings();
-    this.saveSettings({
-      ...settings,
-      lastBackupDate: `${snapshot.jalaliDate} ${snapshot.jalaliTime}`,
-    });
+      const snapshot: BackupSnapshot = {
+        id: 'snap_' + Date.now(),
+        timestamp: Date.now(),
+        jalaliDate: getTodayJalali(),
+        jalaliTime: getCurrentTime(),
+        personnelCount: personnel.length,
+        coursesCount: courses.length,
+        attendanceCount: attendance.length,
+        sizeBytes: new Blob([jsonStr]).size,
+        data: backupData,
+      };
 
-    return snapshot;
+      // حداکثر ۱۰ نسخه‌ی آخر
+      const updated = [snapshot, ...currentBackups].slice(0, 10);
+      if (!this.saveBackups(updated)) {
+        return {
+          status: 'failed',
+          reason: 'حافظه‌ی برنامه برای نگهداری نسخه‌ی پشتیبان کافی نیست. از گزینه «دانلود فایل پشتیبان» استفاده کنید.',
+        };
+      }
+
+      const settings = this.getSettings();
+      this.saveSettings({
+        ...settings,
+        lastBackupDate: `${snapshot.jalaliDate} ${snapshot.jalaliTime}`,
+      });
+
+      return { status: 'saved', snapshot, kept: this.getBackups().length };
+    } catch (err) {
+      return { status: 'failed', reason: err instanceof Error ? err.message : String(err) };
+    }
   },
 
   /**
@@ -419,7 +455,15 @@ export const StorageAPI = {
     attendance: AttendanceRecord[];
   }> {
     const text = await file.text();
-    const parsed = deepNormalize(JSON.parse(text));
+    if (!text || text.trim() === '') {
+      throw new Error('فایل پشتیبان خالی است (۰ بایت) و اطلاعاتی ندارد. فایل پشتیبان سالم دیگری انتخاب کنید.');
+    }
+    let parsed: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    try {
+      parsed = deepNormalize(JSON.parse(text));
+    } catch {
+      throw new Error('فایل انتخاب‌شده فایل پشتیبان معتبر (JSON) نیست.');
+    }
 
     let personnel: Personnel[] = [];
     let courses: Course[] = [];

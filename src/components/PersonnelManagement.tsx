@@ -707,8 +707,8 @@ export const PersonnelManagement: React.FC<Props> = ({
 
       {/* Excel Upload Modal */}
       {showImportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-lg rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-right">
+        <div className="app-modal-overlay bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="app-modal-panel w-full max-w-lg rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-right">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2.5">
                 <div className="p-2.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-600 rounded-xl">
@@ -837,14 +837,22 @@ export const PersonnelManagement: React.FC<Props> = ({
                 </button>
               </div>
             )}
+
+            <button
+              type="button"
+              onClick={() => { setShowImportModal(false); setImportSummary(null); }}
+              className="mt-4 w-full py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
+            >
+              بستن
+            </button>
           </div>
         </div>
       )}
 
       {/* Add / Edit Personnel Modal */}
       {showPersonModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-right">
+        <div className="app-modal-overlay bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="app-modal-panel w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-right">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
               <h3 className="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
                 <Users className={`w-5 h-5 ${themeObj.textPrimary}`} />

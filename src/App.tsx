@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { setNationalIdConfig } from './utils/nationalId';
 import { 
   UserCheck, 
@@ -62,17 +62,34 @@ export default function App() {
     };
   }, []);
 
-  // Automatic Background Backup Timer
+  // پشتیبان‌گیری خودکار: آخرین داده‌ها در ref نگه داشته می‌شوند تا با هر تغییر داده، زمان‌سنج صفر نشود
+  const latestDataRef = useRef({ personnel, courses, attendance });
+  latestDataRef.current = { personnel, courses, attendance };
+
   useEffect(() => {
     if (!settings.autoBackup) return;
 
-    const intervalMs = Math.max(5, settings.autoBackupIntervalMinutes || 20) * 60 * 1000;
-    const timer = setInterval(() => {
-      StorageAPI.createBackupSnapshot(personnel, courses, attendance);
-    }, intervalMs);
+    const takeSnapshot = () => {
+      const { personnel: p, courses: c, attendance: a } = latestDataRef.current;
+      StorageAPI.createBackupSnapshot(p, c, a); // اگر تغییری نباشد، نسخه‌ی تکراری ساخته نمی‌شود
+    };
 
-    return () => clearInterval(timer);
-  }, [settings.autoBackup, settings.autoBackupIntervalMinutes, personnel, courses, attendance]);
+    const intervalMs = Math.max(5, settings.autoBackupIntervalMinutes || 20) * 60 * 1000;
+    const timer = setInterval(takeSnapshot, intervalMs);
+
+    // در اندروید وقتی برنامه به پس‌زمینه می‌رود زمان‌سنج متوقف می‌شود؛ پس همان لحظه نسخه گرفته می‌شود
+    const onHidden = () => {
+      if (document.visibilityState === 'hidden') takeSnapshot();
+    };
+    document.addEventListener('visibilitychange', onHidden);
+    window.addEventListener('pagehide', takeSnapshot);
+
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onHidden);
+      window.removeEventListener('pagehide', takeSnapshot);
+    };
+  }, [settings.autoBackup, settings.autoBackupIntervalMinutes]);
 
   // Keep active course and session synced
   useEffect(() => {

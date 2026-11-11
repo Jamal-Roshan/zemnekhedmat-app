@@ -75,8 +75,8 @@ export const PWAInstallButton: React.FC<Props> = ({ variant = 'navbar' }) => {
 
       {/* Guide Modal for iOS or manual install */}
       {showIOSGuide && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-right">
+        <div className="app-modal-overlay bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="app-modal-panel w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-right">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <div className="p-2 bg-teal-100 dark:bg-teal-950 text-teal-600 rounded-lg">

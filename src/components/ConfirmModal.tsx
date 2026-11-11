@@ -28,9 +28,9 @@ export const ConfirmModal: React.FC<Props> = ({
   const isWarning = variant === 'warning';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+    <div className="app-modal-overlay bg-black/65 backdrop-blur-xs animate-in fade-in duration-150">
       <div 
-        className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-right animate-in zoom-in-95 duration-150"
+        className="app-modal-panel w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-right animate-in zoom-in-95 duration-150"
         role="dialog"
         aria-modal="true"
       >

@@ -69,11 +69,15 @@ export const SettingsAndBackup: React.FC<Props> = ({
 
   // Take manual snapshot now
   const handleCreateSnapshotNow = () => {
-    const snap = StorageAPI.createBackupSnapshot(personnel, courses, attendance);
+    const res = StorageAPI.createBackupSnapshot(personnel, courses, attendance, { force: true });
     setBackupsList(StorageAPI.getBackups());
-    setBackupSuccessMessage(`نسخه پشتیبان در ساعت ${snap.jalaliTime} با موفقیت ثبت شد.`);
-    showToast(`نسخه پشتیبان در ساعت ${snap.jalaliTime} ذخیره شد.`, 'success');
-    setTimeout(() => setBackupSuccessMessage(null), 4000);
+    if (res.status === 'saved') {
+      setBackupSuccessMessage(`نسخه پشتیبان در ساعت ${res.snapshot.jalaliTime} با موفقیت ثبت شد.`);
+      showToast(`نسخه پشتیبان در ساعت ${res.snapshot.jalaliTime} ذخیره شد.`, 'success');
+      setTimeout(() => setBackupSuccessMessage(null), 4000);
+    } else if (res.status === 'failed') {
+      showToast('ثبت نسخه پشتیبان انجام نشد: ' + res.reason, 'error');
+    }
   };
 
   // Download complete JSON backup file to device
@@ -84,6 +88,9 @@ export const SettingsAndBackup: React.FC<Props> = ({
   // Confirm restore from snapshot
   const handleConfirmRestoreSnapshot = () => {
     if (!snapshotToRestore) return;
+    // قبل از بازگردانی، از وضعیت فعلی یک نسخه‌ی ایمنی گرفته می‌شود تا قابل برگشت باشد
+    StorageAPI.createBackupSnapshot(personnel, courses, attendance, { force: true });
+    setBackupsList(StorageAPI.getBackups());
     StorageAPI.savePersonnel(snapshotToRestore.data.personnel);
     StorageAPI.saveCourses(snapshotToRestore.data.courses);
     StorageAPI.saveAttendance(snapshotToRestore.data.attendance);
@@ -102,6 +109,7 @@ export const SettingsAndBackup: React.FC<Props> = ({
     if (!file) return;
 
     try {
+      StorageAPI.createBackupSnapshot(personnel, courses, attendance, { force: true });
       const data = await StorageAPI.importBackupFile(file);
       onReloadAllData(data);
       setBackupsList(StorageAPI.getBackups());
@@ -567,8 +575,8 @@ export const SettingsAndBackup: React.FC<Props> = ({
 
       {/* Danger Confirmation Modal */}
       {dangerConfirmType && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-2xl border border-rose-300 dark:border-rose-800 text-right">
+        <div className="app-modal-overlay bg-black/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="app-modal-panel w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-2xl border border-rose-300 dark:border-rose-800 text-right">
             <div className="flex items-center gap-3 text-rose-600 mb-3">
               <div className="p-2.5 bg-rose-100 dark:bg-rose-950 rounded-xl">
                 <AlertTriangle className="w-6 h-6" />
